@@ -1,3 +1,5 @@
+import { decodeHtml, urlAtPath, urlOnDomain } from "../lib/html-url.js";
+
 const SERVER_NAME = "webembedding-remote-intake";
 const SERVER_VERSION = "0.3.9";
 const RESOURCE_URI = "ui://webembedding/intake.html";
@@ -112,15 +114,6 @@ function textFromHtml(html, pattern) {
   return match ? decodeHtml(match[1].replace(/\s+/g, " ").trim()) : null;
 }
 
-function decodeHtml(value) {
-  return String(value)
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-}
-
 function absoluteUrl(value, baseUrl) {
   try {
     return new URL(value, baseUrl).toString();
@@ -158,11 +151,11 @@ function extractMeta(html) {
 
 function classifyCandidate(url) {
   const lowered = url.toLowerCase();
-  if (lowered.includes("youtube.com/embed") || lowered.includes("player.vimeo.com")) return "media-embed";
-  if (lowered.includes("figma.com/embed")) return "figma-embed";
+  if (urlAtPath(url, "youtube.com", "/embed") || urlOnDomain(url, "player.vimeo.com")) return "media-embed";
+  if (urlAtPath(url, "figma.com", "/embed")) return "figma-embed";
   if (lowered.includes("spline") && /preview|viewer|community|splinecode/.test(lowered)) return "spline-preview";
   if (lowered.includes("framer.") || lowered.includes("framer.app")) return "framer-source";
-  if (lowered.includes("webflow.io")) return "webflow-source";
+  if (urlOnDomain(url, "webflow.io")) return "webflow-source";
   if (/embed|preview|viewer|iframe/.test(lowered)) return "generic-embed";
   return "link";
 }
