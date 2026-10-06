@@ -6,6 +6,8 @@ import re
 from typing import Any
 from urllib.parse import quote, urlparse
 
+from .url_hosts import host_on_domain, html_links_domain, url_on_domain
+
 
 SPLINE_FILE_RE = re.compile(r"https://app\.spline\.design/file/[^\"'\s>]+", re.I)
 SPLINE_VIEWER_RE = re.compile(r"https://viewer\.spline\.design/[^\"'\s>]+", re.I)
@@ -101,7 +103,6 @@ def inspect_platform_adapter(
     html: str,
     meta: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    lowered_url = (final_url or "").lower()
     lowered_html = (html or "").lower()
     generator = _extract_generator(html)
     meta = meta or {}
@@ -116,9 +117,9 @@ def inspect_platform_adapter(
     }
     common_platform = _match_common_platform(final_url, generator, lowered_html)
 
-    if "spline.design" in lowered_url or "spline.design" in lowered_html:
+    if url_on_domain(final_url, "spline.design") or html_links_domain(lowered_html, "spline.design"):
         adapter.update(_inspect_spline(final_url, html))
-    elif "figma.com" in lowered_url or "figma.com" in lowered_html:
+    elif url_on_domain(final_url, "figma.com") or html_links_domain(lowered_html, "figma.com"):
         adapter.update(_inspect_figma(final_url, html))
     elif _looks_like_readymag(final_url, generator, lowered_html):
         adapter.update(_inspect_readymag(final_url, html, generator))
@@ -175,7 +176,7 @@ def _looks_like_readymag(final_url: str, generator: str | None, lowered_html: st
     host = _host(final_url)
     generator_text = (generator or "").lower()
     return (
-        host.endswith("readymag.com")
+        host_on_domain(host, "readymag.com")
         or "readymag" in generator_text
         or bool(READYMAG_RUNTIME_RE.search(lowered_html))
     )
@@ -320,10 +321,11 @@ def _inspect_figma(final_url: str, html: str) -> dict[str, Any]:
     host = parsed.hostname or ""
     path = parsed.path or ""
 
-    if "figma.com/embed" in lowered_url and host.endswith("figma.com") and _looks_like_page_url(final_url):
+    on_figma = host_on_domain(host, "figma.com")
+    if on_figma and path.lower().startswith("/embed") and _looks_like_page_url(final_url):
         _append_candidate(candidates, "figma-embed", final_url, "figma")
         notes.append("Existing Figma embed URL detected.")
-    elif host.endswith("figma.com") and FIGMA_PATH_RE.search(path) and _looks_like_page_url(final_url):
+    elif on_figma and FIGMA_PATH_RE.search(path) and _looks_like_page_url(final_url):
         embed_url = f"https://www.figma.com/embed?embed_host=share&url={quote(final_url, safe='')}"
         _append_candidate(candidates, "figma-embed", embed_url, "figma")
         notes.append("Generated a Figma embed URL from the original share link.")
@@ -359,7 +361,7 @@ def _inspect_readymag(final_url: str, html: str, generator: str | None) -> dict[
     lowered_html = (html or "").lower()
     host = _host(final_url)
 
-    if host.endswith("readymag.com"):
+    if host_on_domain(host, "readymag.com"):
         notes.append("Readymag-managed host detected.")
         _append_unique(source_signals, "published-host")
     else:
@@ -370,7 +372,7 @@ def _inspect_readymag(final_url: str, html: str, generator: str | None) -> dict[
         notes.append(f"Generator meta: {generator}")
         _append_unique(source_signals, "generator")
 
-    if "embed.readymag.com" in lowered_html:
+    if html_links_domain(lowered_html, "embed.readymag.com"):
         _append_candidate(candidates, "readymag-embed", "https://embed.readymag.com", "readymag")
         notes.append("Readymag embed surface detected in page source.")
         _append_unique(source_signals, "embed-like")
