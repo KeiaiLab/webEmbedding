@@ -17,6 +17,7 @@ from .self_verify import (
     _self_verify_summary,
     run_rebuild_self_verify,
 )
+from .url_hosts import https_url_at, split_url, url_host, url_on_domain
 from .verification import build_exact_reuse_verification, verify_fidelity_report
 
 
@@ -64,17 +65,17 @@ def is_noise_url(url: str) -> bool:
 
 def infer_platform(url: str) -> str:
     lowered = url.lower()
-    if "spline.design" in lowered:
+    if url_on_domain(url, "spline.design"):
         return "spline"
-    if "figma.com" in lowered:
+    if url_on_domain(url, "figma.com"):
         return "figma"
     if "readymag" in lowered or "rmcdn" in lowered:
         return "readymag"
-    if "youtube.com" in lowered or "youtu.be" in lowered:
+    if url_on_domain(url, "youtube.com", "youtu.be"):
         return "youtube"
-    if "vimeo.com" in lowered:
+    if url_on_domain(url, "vimeo.com"):
         return "vimeo"
-    if "codepen.io" in lowered:
+    if url_on_domain(url, "codepen.io"):
         return "codepen"
     if "webflow" in lowered:
         return "webflow"
@@ -85,21 +86,25 @@ def infer_platform(url: str) -> str:
 
 def classify_candidate(url: str) -> str:
     lowered = url.lower()
-    if "https://www.figma.com/embed" in lowered:
+    parts = split_url(url)
+    path = parts.path.lower() if parts else ""
+    query = parts.query.lower() if parts else ""
+    host = url_host(url)
+    if https_url_at(url, "www.figma.com", "/embed"):
         return "figma-embed"
-    if "https://embed.readymag.com" in lowered:
+    if https_url_at(url, "embed.readymag.com"):
         return "readymag-embed"
     if "htmlsnippet-" in lowered and lowered.endswith(".html"):
         return "readymag-html-snippet"
-    if "https://www.youtube.com/embed/" in lowered:
+    if https_url_at(url, "www.youtube.com", "/embed/"):
         return "youtube-embed"
-    if "https://player.vimeo.com/video/" in lowered:
+    if https_url_at(url, "player.vimeo.com", "/video/"):
         return "vimeo-embed"
-    if "https://codepen.io/" in lowered and "/embed/" in lowered:
+    if https_url_at(url, "codepen.io") and "/embed/" in path:
         return "codepen-embed"
-    if "app.spline.design/file/" in lowered and "view=preview" in lowered:
+    if host == "app.spline.design" and path.startswith("/file/") and "view=preview" in query:
         return "spline-preview"
-    if "viewer.spline.design/" in lowered:
+    if host == "viewer.spline.design":
         return "spline-viewer"
     if ".splinecode" in lowered:
         return "spline-code"
