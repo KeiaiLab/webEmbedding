@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "smoke": "node ./scripts/smoke.mjs"
+    "smoke": "node ./scripts/smoke.mjs",
+    "test": "node --test test/"
   }
 }
