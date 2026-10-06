@@ -5,6 +5,6 @@
   "type": "module",
   "scripts": {
     "smoke": "node ./scripts/smoke.mjs",
-    "test": "node --test test/"
+    "test": "node --test"
   }
 }
